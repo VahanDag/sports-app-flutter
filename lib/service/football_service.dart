@@ -7,7 +7,8 @@ import 'package:sports_app/models/standings.dart';
 
 mixin FootballService {
   static const String url = "https://api.football-data.org/v4";
-  static const Map<String, String> headers = {"X-Auth-Token": ""}; // Enter your API key
+  static const String apiKey = 'YOUR_API_KEY_HERE'; // Enter your API key
+  static const Map<String, String> headers = {"X-Auth-Token": apiKey};
   static Future<List<Standing>> standings(LeagueCode leagueCode) async {
     final response = await http.get(Uri.parse("$url/competitions/${leagueCode.name}/standings"), headers: headers);
 
