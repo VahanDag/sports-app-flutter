@@ -1,6 +1,6 @@
 # Sports App
 
-![Watch the demo video](C:\Users\vdag_\Desktop\Vahan\Python\image-converter\convertedFiles\covertedGif.gif)
+![Watch the demo video](https://github.com/VahanDag/sports-app-flutter/blob/main/app.gif)
 
 ## Overview
 
