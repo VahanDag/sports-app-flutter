@@ -1,13 +1,25 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
+import 'package:sports_app/core/constants.dart';
+import 'package:sports_app/core/enums.dart';
 import 'package:sports_app/core/extensions.dart';
 import 'package:sports_app/core/padding_borders.dart';
+import 'package:sports_app/core/useful_functions.dart';
+import 'package:sports_app/models/fixture_matches.dart';
+import 'package:sports_app/views/statistics.dart';
 import 'package:sports_app/views/stats.dart';
 
 class MatchDetail extends StatefulWidget {
-  const MatchDetail({super.key});
+  const MatchDetail({
+    super.key,
+    required this.match,
+    required this.leagueCode,
+  });
+  final MatchModel match;
+  final LeagueCode leagueCode;
 
   @override
   State<MatchDetail> createState() => MatchDetailState();
@@ -16,21 +28,28 @@ class MatchDetail extends StatefulWidget {
 class MatchDetailState extends State<MatchDetail> with TickerProviderStateMixin {
   late final TabController _tabInfoController;
   late final PageController _pageController;
-  final List<String> _info = ["Timeline", "Lineups", "Stats", "News"];
+  final List<String> _info = ["Timeline", "Lineups", "Stats"];
   late String _currentInfo;
+  late final bool _isPlaying;
 
-  final List<Widget> _pages = [
-    const Timeline(),
-    const Lineups(),
-    Stats(textColor: Colors.white),
-    const Text("data4"),
-  ];
+  late final List<Widget> _pages;
 
   @override
   void initState() {
     _tabInfoController = TabController(length: _info.length, vsync: this);
     _currentInfo = _info[0];
     _pageController = PageController();
+    _isPlaying = !AppConstants.statusList.contains(widget.match.status);
+    _pages = [
+      Timeline(isPlaying: _isPlaying),
+      Lineups(awayTeam: widget.match.awayTeam?.name ?? "", homeTeam: widget.match.homeTeam?.name ?? ""),
+      Stats(
+        textColor: Colors.white,
+        leagueCode: widget.leagueCode,
+        clubNameAway: widget.match.awayTeam?.name,
+        clubNameHome: widget.match.homeTeam?.name,
+      ),
+    ];
     super.initState();
   }
 
@@ -41,19 +60,18 @@ class MatchDetailState extends State<MatchDetail> with TickerProviderStateMixin 
         alignment: Alignment.center,
         children: [
           Container(
-              decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xff780206), Color(0xff061161)])),
+              decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xff42275a), Color(0xff734b6d)])),
               child: Column(
                 children: [
                   Container(
-                    margin: const EdgeInsets.only(top: 60, bottom: 25),
+                    margin: const EdgeInsets.only(top: 50, bottom: 20),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        Container(
-                            height: 80,
-                            width: 80,
-                            decoration: const BoxDecoration(
-                                image: DecorationImage(image: AssetImage("assets/leagues/chelsea.png")))),
+                        _clubLogoBoard(
+                            context: context,
+                            logoUrl: widget.match.homeTeam?.crest ?? "",
+                            clubName: widget.match.homeTeam?.name ?? ""),
                         ClipRect(
                           clipBehavior: Clip.antiAlias,
                           child: BackdropFilter(
@@ -63,34 +81,14 @@ class MatchDetailState extends State<MatchDetail> with TickerProviderStateMixin 
                               decoration: BoxDecoration(
                                   color: Colors.white.withOpacity(0.2),
                                   borderRadius: PaddingBorderConstant.borderRadiusHigh),
-                              child: Row(
-                                children: [
-                                  const Text("3",
-                                      style: TextStyle(color: Colors.white, fontSize: 35, fontWeight: FontWeight.bold)),
-                                  Padding(
-                                    padding: PaddingBorderConstant.paddingHorizontal,
-                                    child: CircularPercentIndicator(
-                                        radius: 30,
-                                        lineWidth: 5,
-                                        percent: 0.75,
-                                        circularStrokeCap: CircularStrokeCap.round,
-                                        progressColor: Colors.amber.shade700,
-                                        center: const Text("63",
-                                            style:
-                                                TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w500))),
-                                  ),
-                                  const Text("2",
-                                      style: TextStyle(color: Colors.white, fontSize: 35, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
+                              child: _isPlaying ? _scoreBoard() : _matchDateBoard(context),
                             ),
                           ),
                         ),
-                        Container(
-                            height: 80,
-                            width: 80,
-                            decoration: const BoxDecoration(
-                                image: DecorationImage(image: AssetImage("assets/leagues/liverpool.png")))),
+                        _clubLogoBoard(
+                            context: context,
+                            logoUrl: widget.match.awayTeam?.crest ?? "",
+                            clubName: widget.match.awayTeam?.name ?? ""),
                       ],
                     ),
                   ),
@@ -161,10 +159,55 @@ class MatchDetailState extends State<MatchDetail> with TickerProviderStateMixin 
       ),
     );
   }
+
+  Column _clubLogoBoard({required String logoUrl, required String clubName, required BuildContext context}) {
+    return Column(
+      children: [
+        Container(
+            margin: PaddingBorderConstant.paddingOnlyBottom, height: 80, width: 80, child: DynamicImage(imageUrl: logoUrl)),
+        Text(
+          clubName,
+          style: context.textTheme.titleSmall?.copyWith(color: Colors.white),
+        )
+      ],
+    );
+  }
+
+  Text _matchDateBoard(BuildContext context) {
+    return Text(
+      extractHour(widget.match.utcDate ?? ""),
+      style: context.textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+    );
+  }
+
+  Row _scoreBoard() {
+    return Row(
+      children: [
+        const Text("3", style: TextStyle(color: Colors.white, fontSize: 35, fontWeight: FontWeight.bold)),
+        Padding(
+          padding: PaddingBorderConstant.paddingHorizontal,
+          child: CircularPercentIndicator(
+              radius: 30,
+              lineWidth: 5,
+              percent: 0.75,
+              circularStrokeCap: CircularStrokeCap.round,
+              progressColor: Colors.amber.shade700,
+              center: const Text("63", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w500))),
+        ),
+        const Text("2", style: TextStyle(color: Colors.white, fontSize: 35, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
 }
 
 class Lineups extends StatefulWidget {
-  const Lineups({super.key});
+  const Lineups({
+    super.key,
+    required this.homeTeam,
+    required this.awayTeam,
+  });
+  final String homeTeam;
+  final String awayTeam;
 
   @override
   State<Lineups> createState() => _LineupsState();
@@ -172,12 +215,21 @@ class Lineups extends StatefulWidget {
 
 class _LineupsState extends State<Lineups> with TickerProviderStateMixin {
   late final TabController _tabLineupsController;
-  final List<Widget> _tabs = [
-    const Text("Liverpool"),
-    const Text("Chelsea"),
-  ];
+  List<Widget> _tabs = [];
   @override
   void initState() {
+    _tabs = [
+      Text(
+        widget.homeTeam,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      Text(
+        widget.awayTeam,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      )
+    ];
     _tabLineupsController = TabController(length: _tabs.length, vsync: this);
     super.initState();
   }
@@ -191,18 +243,23 @@ class _LineupsState extends State<Lineups> with TickerProviderStateMixin {
             height: 35,
             width: context.deviceWidth * 0.75,
             margin: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: Colors.red, borderRadius: PaddingBorderConstant.borderRadiusMedium),
+            decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Color(0xff42275a), Color(0xff734b6d)]),
+                borderRadius: PaddingBorderConstant.borderRadiusMedium),
             child: TabBar(
                 dividerHeight: 0,
                 indicatorSize: TabBarIndicatorSize.tab,
-                indicator: BoxDecoration(color: Colors.deepPurple, borderRadius: PaddingBorderConstant.borderRadius),
+                indicator: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xff42275a), Color(0xff734b6d)]),
+                    borderRadius: PaddingBorderConstant.borderRadius),
                 controller: _tabLineupsController,
                 splashBorderRadius: PaddingBorderConstant.borderRadius,
-                unselectedLabelColor: Colors.black,
+                unselectedLabelColor: Colors.grey,
                 labelColor: Colors.white,
                 tabs: _tabs),
           ),
           Container(
+            margin: PaddingBorderConstant.paddingVertical,
             width: context.deviceWidth * 0.75,
             height: 350,
             decoration: BoxDecoration(color: Colors.green, borderRadius: PaddingBorderConstant.borderRadiusMedium),
@@ -217,14 +274,6 @@ class _LineupsState extends State<Lineups> with TickerProviderStateMixin {
                       CircleAvatar(backgroundColor: Colors.white),
                       CircleAvatar(backgroundColor: Colors.white),
                       CircleAvatar(backgroundColor: Colors.white),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      CircleAvatar(backgroundColor: Colors.white),
-                      CircleAvatar(backgroundColor: Colors.white),
-                      CircleAvatar(backgroundColor: Colors.white),
                       CircleAvatar(backgroundColor: Colors.white),
                     ],
                   ),
@@ -232,6 +281,14 @@ class _LineupsState extends State<Lineups> with TickerProviderStateMixin {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       CircleAvatar(backgroundColor: Colors.white),
+                      CircleAvatar(backgroundColor: Colors.white),
+                      CircleAvatar(backgroundColor: Colors.white),
+                      CircleAvatar(backgroundColor: Colors.white),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
                       CircleAvatar(backgroundColor: Colors.white),
                       CircleAvatar(backgroundColor: Colors.white),
                     ],
@@ -280,34 +337,53 @@ class _LineupsState extends State<Lineups> with TickerProviderStateMixin {
 }
 
 class Timeline extends StatelessWidget {
-  const Timeline({super.key});
+  const Timeline({
+    super.key,
+    required this.isPlaying,
+  });
+
+  final bool isPlaying;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: PaddingBorderConstant.paddingVerticalHigh,
-      child: Stack(
-        alignment: Alignment.center,
-        children: <Widget>[
-          const VerticalDivider(
-            color: Colors.grey,
-            thickness: 3,
-            width: 4,
-          ),
-          SingleChildScrollView(
-            child: Column(
-              children: [
-                _timelineContainer(context: context, isLeft: false),
-                _timelineContainer(context: context, isLeft: true),
-                _timelineContainer(context: context, isLeft: false),
-                _timelineContainer(context: context, isLeft: true),
-                _timelineContainer(context: context, isLeft: true),
-              ],
+    if (isPlaying) {
+      return Padding(
+        padding: PaddingBorderConstant.paddingVerticalHigh,
+        child: Stack(
+          alignment: Alignment.center,
+          children: <Widget>[
+            const VerticalDivider(
+              color: Colors.grey,
+              thickness: 3,
+              width: 4,
             ),
+            SingleChildScrollView(
+              child: Column(
+                children: [
+                  _timelineContainer(context: context, isLeft: false),
+                  _timelineContainer(context: context, isLeft: true),
+                  _timelineContainer(context: context, isLeft: false),
+                  _timelineContainer(context: context, isLeft: true),
+                  _timelineContainer(context: context, isLeft: true),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.timeline_rounded,
+            size: 75,
+            color: Colors.grey.shade300,
           ),
+          infoText(infoMessage: "the match hasn't started yet", context: context, textColor: Colors.grey.shade300)
         ],
-      ),
-    );
+      );
+    }
   }
 
   Widget _timelineContainer({required BuildContext context, required bool isLeft}) {
